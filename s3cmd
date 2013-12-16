@@ -70,7 +70,9 @@ def subcmd_bucket_usage(s3, uri):
     if object.endswith('*'):
         object = object[:-1]
 
-    bucket_size = 0
+    bucket_size_total = 0
+    bucket_size_standart = 0
+    bucket_size_glacier = 0
     # iterate and store directories to traverse, while summing objects:
     dirs = [object]
     while dirs:
@@ -85,15 +87,32 @@ def subcmd_bucket_usage(s3, uri):
 
         # objects in the current scope:
         for obj in response["list"]:
-            bucket_size += int(obj["Size"])
+            objSize = int(obj["Size"])
+            #size for Glacier object
+            if obj["StorageClass"] == "GLACIER":
+                bucket_size_glacier += objSize
+            #standart object
+            else:
+                bucket_size_standart += objSize
+                
+            bucket_size_total += objSize
 
         # directories found in current scope:
         for obj in response["common_prefixes"]:
             dirs.append(obj["Prefix"])
 
-    total_size, size_coeff = formatSize(bucket_size, Config().human_readable_sizes)
+    total_size, size_coeff = formatSize(bucket_size_total, Config().human_readable_sizes)
     total_size_str = str(total_size) + size_coeff
-    output(u"%s %s" % (total_size_str.ljust(8), uri))
+    output(u"%s %s %s" % ("Total".ljust(8), total_size_str.ljust(8), uri))
+    
+    total_size_standart, size_coeff_standart = formatSize(bucket_size_standart, Config().human_readable_sizes)
+    total_size_standart_str = str(total_size_standart) + size_coeff_standart
+    output(u"%s %s %s" % ("Standart".ljust(8), total_size_standart_str.ljust(8), uri))
+    
+    total_size_glacier, size_coeff_glacier = formatSize(bucket_size_glacier, Config().human_readable_sizes)
+    total_size_glacier_str = str(total_size_glacier) + size_coeff_glacier
+    output(u"%s %s %s" % ("Glacier".ljust(8), total_size_glacier_str.ljust(8), uri))
+    
     return bucket_size
 
 def cmd_ls(args):
